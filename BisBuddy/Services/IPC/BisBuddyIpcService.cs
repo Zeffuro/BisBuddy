@@ -52,56 +52,56 @@ public record BisResolvedItem(
 
 public class BisBuddyIpcService : IHostedService
 {
-    private readonly IDalamudPluginInterface _pluginInterface;
-    private readonly IGearsetsService _gearsetsService;
-    private readonly IConfigurationService _configurationService;
+    private readonly IDalamudPluginInterface pluginInterface;
+    private readonly IGearsetsService gearsetsService;
+    private readonly IConfigurationService configurationService;
 
-    private ICallGateProvider<bool>? _isInitialized;
-    private ICallGateProvider<bool, bool>? _initialized;
+    private ICallGateProvider<bool>? isInitialized;
+    private ICallGateProvider<bool, bool>? initialized;
 
-    private ICallGateProvider<List<BisItemEntry>>? _getInventoryHighlightItems;
-    private ICallGateProvider<List<BisItemEntry>, bool>? _inventoryHighlightItemsChanged;
+    private ICallGateProvider<List<BisItemEntry>>? getInventoryHighlightItems;
+    private ICallGateProvider<List<BisItemEntry>, bool>? inventoryHighlightItemsChanged;
 
-    private ICallGateProvider<BisItemFilter, List<BisItemEntry>>? _getBisItemsFiltered;
+    private ICallGateProvider<BisItemFilter, List<BisItemEntry>>? getBisItemsFiltered;
 
-    private ICallGateProvider<List<BisGearsetEntry>>? _getRegisteredSets;
-    private ICallGateProvider<string, BisItemFilter, List<BisResolvedItem>>? _resolveSet;
+    private ICallGateProvider<List<BisGearsetEntry>>? getRegisteredSets;
+    private ICallGateProvider<string, BisItemFilter, List<BisResolvedItem>>? resolveSet;
 
     public BisBuddyIpcService(
         IDalamudPluginInterface pluginInterface,
         IGearsetsService gearsetsService,
         IConfigurationService configurationService)
     {
-        _pluginInterface = pluginInterface;
-        _gearsetsService = gearsetsService;
-        _configurationService = configurationService;
+        this.pluginInterface = pluginInterface;
+        this.gearsetsService = gearsetsService;
+        this.configurationService = configurationService;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        _isInitialized = _pluginInterface.GetIpcProvider<bool>("BisBuddy.IsInitialized");
-        _isInitialized.RegisterFunc(() => true);
+        isInitialized = pluginInterface.GetIpcProvider<bool>("BisBuddy.IsInitialized");
+        isInitialized.RegisterFunc(() => true);
 
-        _initialized = _pluginInterface.GetIpcProvider<bool, bool>("BisBuddy.Initialized");
+        initialized = pluginInterface.GetIpcProvider<bool, bool>("BisBuddy.Initialized");
 
-        _getInventoryHighlightItems = _pluginInterface.GetIpcProvider<List<BisItemEntry>>("BisBuddy.GetInventoryHighlightItems");
-        _getInventoryHighlightItems.RegisterFunc(GetInventoryHighlightItemsInternal);
+        getInventoryHighlightItems = pluginInterface.GetIpcProvider<List<BisItemEntry>>("BisBuddy.GetInventoryHighlightItems");
+        getInventoryHighlightItems.RegisterFunc(GetInventoryHighlightItemsInternal);
 
-        _inventoryHighlightItemsChanged = _pluginInterface.GetIpcProvider<List<BisItemEntry>, bool>("BisBuddy.InventoryHighlightItemsChanged");
+        inventoryHighlightItemsChanged = pluginInterface.GetIpcProvider<List<BisItemEntry>, bool>("BisBuddy.InventoryHighlightItemsChanged");
 
-        _getBisItemsFiltered = _pluginInterface.GetIpcProvider<BisItemFilter, List<BisItemEntry>>("BisBuddy.GetBisItemsFiltered");
-        _getBisItemsFiltered.RegisterFunc(GetBisItemsFilteredInternal);
+        getBisItemsFiltered = pluginInterface.GetIpcProvider<BisItemFilter, List<BisItemEntry>>("BisBuddy.GetBisItemsFiltered");
+        getBisItemsFiltered.RegisterFunc(GetBisItemsFilteredInternal);
 
-        _getRegisteredSets = _pluginInterface.GetIpcProvider<List<BisGearsetEntry>>("BisBuddy.GetRegisteredSets");
-        _getRegisteredSets.RegisterFunc(GetRegisteredSetsInternal);
+        getRegisteredSets = pluginInterface.GetIpcProvider<List<BisGearsetEntry>>("BisBuddy.GetRegisteredSets");
+        getRegisteredSets.RegisterFunc(GetRegisteredSetsInternal);
 
-        _resolveSet = _pluginInterface.GetIpcProvider<string, BisItemFilter, List<BisResolvedItem>>("BisBuddy.ResolveSet");
-        _resolveSet.RegisterFunc(ResolveSetInternal);
+        resolveSet = pluginInterface.GetIpcProvider<string, BisItemFilter, List<BisResolvedItem>>("BisBuddy.ResolveSet");
+        resolveSet.RegisterFunc(ResolveSetInternal);
 
-        _gearsetsService.OnGearsetsChange += OnGearsetsChanged;
-        _configurationService.OnConfigurationChange += OnConfigurationChanged;
+        gearsetsService.OnGearsetsChange += OnGearsetsChanged;
+        configurationService.OnConfigurationChange += OnConfigurationChanged;
 
-        _initialized.SendMessage(true);
+        initialized.SendMessage(true);
 
         return Task.CompletedTask;
     }
@@ -111,7 +111,7 @@ public class BisBuddyIpcService : IHostedService
     /// </summary>
     private List<BisGearsetEntry> GetRegisteredSetsInternal()
     {
-        return _gearsetsService.CurrentGearsets
+        return gearsetsService.CurrentGearsets
            .Select(g => new BisGearsetEntry(
                 Id: g.Id,
                 Name: g.Name,
@@ -128,7 +128,7 @@ public class BisBuddyIpcService : IHostedService
     /// </summary>
     private List<BisResolvedItem> ResolveSetInternal(string setId, BisItemFilter filter)
     {
-        var gearset = _gearsetsService.CurrentGearsets
+        var gearset = gearsetsService.CurrentGearsets
             .FirstOrDefault(g => g.Id == setId);
 
         if (gearset is null)
@@ -186,7 +186,7 @@ public class BisBuddyIpcService : IHostedService
         var filter = new BisItemFilter(
             IncludePrereqs: true,
             IncludeMateria: true,
-            IncludeCollected: _configurationService.HighlightCollectedInInventory,
+            IncludeCollected: configurationService.HighlightCollectedInInventory,
             IncludeObtainable: true,
             IncludeCollectedPrereqs: true
         );
@@ -202,9 +202,9 @@ public class BisBuddyIpcService : IHostedService
     {
         var result = new List<BisItemEntry>();
 
-        foreach (var itemId in _gearsetsService.AllItemRequirements.Keys)
+        foreach (var itemId in gearsetsService.AllItemRequirements.Keys)
         {
-            var color = _gearsetsService.GetRequirementColor(
+            var color = gearsetsService.GetRequirementColor(
                 itemId,
                 includePrereqs: filter.IncludePrereqs,
                 includeMateria: filter.IncludeMateria,
@@ -224,24 +224,24 @@ public class BisBuddyIpcService : IHostedService
 
     private void OnGearsetsChanged()
     {
-        _inventoryHighlightItemsChanged?.SendMessage(GetInventoryHighlightItemsInternal());
+        inventoryHighlightItemsChanged?.SendMessage(GetInventoryHighlightItemsInternal());
     }
 
     private void OnConfigurationChanged(bool effectsAssignments)
     {
-        _inventoryHighlightItemsChanged?.SendMessage(GetInventoryHighlightItemsInternal());
+        inventoryHighlightItemsChanged?.SendMessage(GetInventoryHighlightItemsInternal());
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        _gearsetsService.OnGearsetsChange -= OnGearsetsChanged;
-        _configurationService.OnConfigurationChange -= OnConfigurationChanged;
-        _isInitialized?.UnregisterFunc();
-        _getInventoryHighlightItems?.UnregisterFunc();
-        _getBisItemsFiltered?.UnregisterFunc();
-        _getRegisteredSets?.UnregisterFunc();
-        _resolveSet?.UnregisterFunc();
-        _initialized?.SendMessage(false);
+        gearsetsService.OnGearsetsChange -= OnGearsetsChanged;
+        configurationService.OnConfigurationChange -= OnConfigurationChanged;
+        isInitialized?.UnregisterFunc();
+        getInventoryHighlightItems?.UnregisterFunc();
+        getBisItemsFiltered?.UnregisterFunc();
+        getRegisteredSets?.UnregisterFunc();
+        resolveSet?.UnregisterFunc();
+        initialized?.SendMessage(false);
         return Task.CompletedTask;
     }
 }
